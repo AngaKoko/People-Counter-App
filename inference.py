@@ -36,6 +36,12 @@ class Network:
 
     def __init__(self):
         ### TODO: Initialize any class variables desired ###
+        self.plugin = None
+        self.network = None
+        self.input_blob = None
+        self.output_blob = None
+        self.exec_network = None
+        self.infer_request = None
 
     def load_model(self):
         ### TODO: Load the model ###
