@@ -91,12 +91,11 @@ class Network:
         return
 
     def wait(self, request_id):
-        ### TODO: Wait for the request to be complete. ###
-        ### TODO: Return any necessary information ###
+        ###: Wait for the request to be complete. ###
+        ###: Return any necessary information ###
         status = self.exec_network.requests[request_id].wait(-1)
         return status
 
-    def get_output(self):
-        ### TODO: Extract and return the output results
-        ### Note: You may need to update the function parameters. ###
-        return
+    def get_output(self, request_id):
+        ###: Extract and return the output results
+        return self.exec_network.requests[request_id].outputs[self.output_blob]
