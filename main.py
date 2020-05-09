@@ -69,8 +69,9 @@ def build_argparser():
 
 
 def connect_mqtt():
-    ### TODO: Connect to the MQTT client ###
-    client = None
+    ###: Connect to the MQTT client ###
+    client = mqtt.Client()
+    client.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
 
     return client
 
@@ -89,7 +90,16 @@ def infer_on_stream(args, client):
     # Set Probability threshold for detections
     prob_threshold = args.prob_threshold
 
-    ### TODO: Load the model through `infer_network` ###
+    # Flag for the input image
+    single_image_mode = False
+
+    cur_request_id = 0
+    last_count = 0
+    total_count = 0
+    start_time = 0
+
+    ###: Load the model through `infer_network` ###
+    n, c, h, w = infer_network.load_model(args.model, args.device, args.cpu_extension)
 
     ### TODO: Handle the input stream ###
 
