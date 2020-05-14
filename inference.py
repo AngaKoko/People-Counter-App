@@ -83,11 +83,20 @@ class Network:
         ### Return the shape of the input layer ###
         return self.network.inputs[self.input_blob].shape
 
-    def exec_net(self, image, request_id):
+    def performance_counter(self, request_id):
+        """
+        Queries performance measures per layer to get feedback of what is the
+        most time consuming layer.
+        :param request_id: Index of Infer request value. Limited to device capabilities
+        :return: Performance of the layer  
+        """
+        perf_count = self.exec_network.requests[request_id].get_perf_counts()
+        return perf_count
+
+    def exec_net(self, request_id, image):
         ###: Start an asynchronous request ###
         ###: Return any necessary information ###
-        self.exec_network.start_async(request_id=request_id, inputs={self.input_blob: image})
-        ### Note: You may need to update the function parameters. ###
+        self.infer_request = self.exec_network.start_async(request_id=request_id, inputs={self.input_blob: image})
         return
 
     def wait(self, request_id):
@@ -99,3 +108,12 @@ class Network:
     def get_output(self, request_id):
         ###: Extract and return the output results
         return self.exec_network.requests[request_id].outputs[self.output_blob]
+
+    def clean(self):
+        """
+        Deletes all the instances
+        :return: None
+        """
+        del self.exec_network
+        del self.plugin
+        del self.network
