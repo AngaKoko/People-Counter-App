@@ -79,6 +79,20 @@ class Network:
         ###: Return the loaded inference plugin ###
         return self.plugin
 
+    def get_output_name(self):
+        '''
+        Gets the input shape of the network
+        '''
+        output_name, _ = "", self.network.outputs[next(iter(self.network.outputs.keys()))]
+        for output_key in self.network.outputs:
+            if self.network.layers[output_key].type == "DetectionOutput":
+                output_name, _ = output_key, self.network.outputs[output_key]
+        
+        if output_name == "":
+            log.error("Can't find a DetectionOutput layer in the topology")
+            exit(-1)
+        return output_name
+
     def get_input_shape(self):
         ### Return the shape of the input layer ###
         return self.network.inputs[self.input_blob].shape
@@ -93,7 +107,7 @@ class Network:
         perf_count = self.exec_network.requests[request_id].get_perf_counts()
         return perf_count
 
-    def exec_net(self, request_id, image):
+    def exec_net(self, image, request_id):
         ###: Start an asynchronous request ###
         ###: Return any necessary information ###
         self.infer_request = self.exec_network.start_async(request_id=request_id, inputs={self.input_blob: image})
