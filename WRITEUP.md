@@ -54,4 +54,7 @@ deployed edge model.
 
 Poor lighting will reduce visibility of objects in the image making it difficult for models to detect objects. The accuracy of the model is important for object detection. A model with lower accuracy can classify a cat as a dog, or a lamp stand as human. This will affect output data from the app. Also imputed image size is important because the model works with a particular image size. We will have to resize the input image size to the size the model can work with.
 
+# Referebce
+Intel IoT Devkit https://github.com/intel-iot-devkit/people-counter-python
+
 
