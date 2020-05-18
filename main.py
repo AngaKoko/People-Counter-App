@@ -110,6 +110,7 @@ def ssd_out(frame, result):
     :return: person count and frame
     """
     current_count = 0
+    exit_count = 0
 
     entre_ROI_xmin = 400
     entre_ROI_ymin = 450
@@ -126,8 +127,17 @@ def ssd_out(frame, result):
             ymax = int(obj[6] * initial_h)
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 55, 255), 2)
             if xmin < entre_ROI_xmin and ymax < entre_ROI_ymin: 
-                current_count = current_count + 1
-    return frame, current_count
+                 if fsm.current == "empty":
+                    current_count = current_count + 1 
+                    fsm.enter()
+
+            if xmin > exit_ROI_xmin and ymax < exit_ROI_ymin:
+                if fsm.current == "standing":
+                    # Change the state to exit - fsm state change
+                    fsm.exit()
+                    exit_count = exit_count +1
+                
+    return frame, current_count, exit_count
 
 def draw_masks(result, width, height):
     '''
@@ -161,7 +171,9 @@ def infer_on_stream(args, client):
     :param client: MQTT client
     :return: None
     """
-    # Initialize the Inference Engine
+    global prob_threshold, initial_w, initial_h
+
+    # Initialise the class
     infer_network = Network()
 
     # Set Probability threshold for detections
@@ -170,130 +182,124 @@ def infer_on_stream(args, client):
     # Load the model through `infer_network`
     infer_network.load_model(args.model, args.device)
 
-    # Get a Input blob shape
-    _, _, in_h, in_w = infer_network.get_input_shape()
+    # Get a Input shape #
+    n, c, h, w = infer_network.get_input_shape()
+    
+    # Handle the input stream#
 
-    # Get a output blob name
-    _ = infer_network.get_output_name()
-    
-    # Handle the input stream
-    try:
-        cap = cv2.VideoCapture(args.input)
-    except FileNotFoundError:
-        print("Cannot locate video file: "+ args.input)
-    except Exception as e:
-        print("Something else went wrong with the video file: ", e)
-    
-    cap.open(args.input)
-    _, frame = cap.read()
+    # Checks for live feed
+    if args.input == 'CAM':
+        input_stream = 0
+    # Checks for input image
+    elif args.input.endswith('.jpg') or args.input.endswith('.bmp') :
+        single_image_mode = True
+        input_stream = args.input
+    # Checks for video file
+    else:
+        input_stream = args.input
+        assert os.path.isfile(args.input), "Specified input file doesn't exist"
+
+    cap = cv2.VideoCapture(input_stream)
+
+    if input_stream:
+        cap.open(args.input)
+
+    if not cap.isOpened():
+        log.error("ERROR! Unable to open video source")
+        
+    prob_threshold = args.prob_threshold
+
+    # Flag for the input image
+    single_image_mode = False
 
     cur_request_id = 0
-    people_total_count = 0
-    people_in_a_frame = 0
-
-    g_elapsed = 0
-    entre_ROI_xmin = 400
-    entre_ROI_ymin = 450
-    exit_ROI_xmin = 550
-    exit_ROI_ymin = 410
+    last_count = 0
+    total_count = 0
+    start_time = 0
+    duration = 0
 
     fps = FPS().start()
 
-    # Process frames until the video ends, or process is exited
+    #  Loop until stream is over ###
     while cap.isOpened():
-        # Read the next frame
+        #  Read from the video capture ###
         flag, frame = cap.read()
         if not flag:
             break
         
-        fh = frame.shape[0]
-        fw = frame.shape[1]
+        initial_h = frame.shape[0]
+        initial_w = frame.shape[1]
         key_pressed = cv2.waitKey(50)
     
-        image_resize = cv2.resize(frame, (in_w, in_h), interpolation = cv2.INTER_AREA)
-        image = np.moveaxis(image_resize, -1, 0)
+        # Start asynchronous inference for specified request ###
+        image = cv2.resize(frame, (w, h))
+        #  Pre-process the image as needed ###
+        image = image.transpose((2, 0, 1))
+        image = image.reshape((n, c, h, w))
 
-        # Perform inference on the frame
-        infer_network.exec_net(image, cur_request_id)
-        
-        # Get the output of inference
+         ### TODO: Start asynchronous inference for specified request ###
+        inf_start = time.time()
+        infer_network.exec_net(image)
+        ### TODO: Wait for the result ###
         if infer_network.wait(cur_request_id) == 0:
+            det_time = time.time() - inf_start
+            ### TODO: Get the results of the inference request ###
             result = infer_network.get_output(cur_request_id)
-            if args.perf_counts:
-                perf_count = infer_network.performance_counter(cur_request_id)
-                performance_counts(perf_count)
-                
-            for box in result[0][0]: # Output shape is 1x1x100x7
-                conf = box[2]
-                if conf >= prob_threshold:
-                    xmin = int(box[3] * fw)
-                    ymin = int(box[4] * fh)
-                    xmax = int(box[5] * fw)
-                    ymax = int(box[6] * fh)
-                    cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
-
-                    if xmin < entre_ROI_xmin and ymax < entre_ROI_ymin:  
-                            if fsm.current == "empty":
-                                # Count a people
-                                people_in_a_frame += 1
-                                people_total_count += 1
-                                # Start the timer
-                                start_time = time.perf_counter()
-                                # Person entered a room - fsm state change
-                                fsm.enter()
-                                print(xmax, ymax)
-                                if args.output == "WEB":
-                                    # Publish people_count messages to the MQTT server
-                                    client.publish("person", json.dumps({"count": people_in_a_frame}))
-
-                    if xmin > exit_ROI_xmin and ymax < exit_ROI_ymin:
-                        if fsm.current == "standing":
-                            # Change the state to exit - fsm state change
-                            fsm.exit()
-                            stop_time = time.perf_counter()
-                            elapsed = stop_time - start_time
-                            
-                            # Update average time
-                            log.info("elapsed time = {:.12f} seconds".format(elapsed))
-                            g_elapsed = (g_elapsed + elapsed) / people_total_count
-                            log.info("g_elapsed time = {:.12f} seconds".format(g_elapsed))
-                            
-                            people_in_a_frame = 0
-
-                            if args.output == "WEB":
-                                # Publish duration messages to the MQTT server
-                                client.publish("person/duration", json.dumps({"duration": g_elapsed}))
-                                client.publish("person", json.dumps({"count": people_in_a_frame}))
-
-                    log.info("xmin:{} xmax:{} ymin:{} ymax:{}".format(xmin, xmax, ymin, ymax))
-                
-        if args.output != "WEB":                                                
-            # Update info on frame
-            info = [
-                ("people ccount", people_total_count),
-            ]
             
-            # loop over the info tuples and draw them on our frame
-            for (i, (k, v)) in enumerate(info):
-                text = "{}: {}".format(k, v)
-                cv2.putText(frame, text, (15, 15),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 10, 10), 1)
-                cv2.putText(frame, "Duration: "+str(round(g_elapsed, 2)), (15, 35),
+            ### TODO: Extract any desired stats from the results ###
+            frame, current_count, exit_count = ssd_out(frame, result)
+            inf_time_message = "Inference time: {:.3f}ms" .format(det_time * 1000)
+            cv2.putText(frame, inf_time_message, (15, 15),
                         cv2.FONT_HERSHEY_COMPLEX, 0.5, (200, 10, 10), 1)
-        
-        if args.output == "WEB":
-            # Push to FFmpeg server
-            sys.stdout.buffer.write(frame)
 
-            sys.stdout.flush()
-        else:
-            cv2.imshow('frame', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            ### TODO: Calculate and send relevant information on ###
+            ### current_count, total_count and duration to the MQTT server ###
+            ### Topic "person": keys of "count" and "total" ###
+            ### Topic "person/duration": key of "duration" ###
+            if current_count > exit_count:
+                start_time = time.time()
+                total_count = total_count + current_count - last_count
+                client.publish("person", json.dumps({"total": total_count}))
+                duration = 0
 
-            #Break if escape key pressed
+            if current_count < exit_count:
+                duration = int(time.time() - start_time)
+                # Publish messages to the MQTT server
+                client.publish("person/duration",
+                               json.dumps({"duration": duration}))
+                client.publish("person", json.dumps({"count": current_count}))
+            
+            last_count = current_count
+
+            cv2.putText(frame, "Total cound: "+str(total_count), (15, 30),
+                        cv2.FONT_HERSHEY_COMPLEX, 0.5, (200, 10, 10), 1)
+            cv2.putText(frame, "Duration: "+str(duration), (15, 45),
+                        cv2.FONT_HERSHEY_COMPLEX, 0.5, (200, 10, 10), 1)
+
             if key_pressed == 27:
                 break
+
+        sys.stdout.buffer.write(frame)  
+        sys.stdout.flush()
+
+        ### Write an output image if `single_image_mode` ###
+        ### Send the frame to the FFMPEG server ###
+        if single_image_mode:
+            cv2.imwrite('output_image.jpg', frame)
+        else:
+            if args.output == "WEB":
+                # Push to FFmpeg server
+                sys.stdout.buffer.write(frame)
+
+                sys.stdout.flush()
+            else:
+                cv2.imshow('frame', frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+                #Break if escape key pressed
+                if key_pressed == 27:
+                    break
         
         fps.update()
     
@@ -303,8 +309,6 @@ def infer_on_stream(args, client):
     client.disconnect()
     infer_network.clean()
     fps.stop()
-
-    print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
 def main():
     """
