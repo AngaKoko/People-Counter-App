@@ -29,7 +29,8 @@ My method(s) to compare models before and after conversion to Intermediate Repre
 were...
 
                                 pre-conversion  |   post-conversion
-`Accuracy                    |       NA          |       NA
+`
+Accuracy                    |       NA          |       NA
 Model Size                  |     69.7mb        |     33mb
 FPS                         |      4.06         |      5.26
 Latency (ms)                |     235.28        |     186.17
