@@ -4,8 +4,7 @@ The people counter application will demonstrate how to create a smart video IoT 
 
 ssd_mobilenet_v2_coco_2018_03_29 TensorFlow model was used for the project and the model can be downloaded from this link http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz
 
-Model was coverted to IR using this command:
-
+Model was coverted to IR using this command:  
 `python3 /opt/intel/openvino/deployment_tools/model_optimizer/mo_tf.py --input_model frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_support.json`
 
 ## Explaining Custom Layers
@@ -28,7 +27,7 @@ For Inference Engine the extension to be implemented is based on the target devi
 My method(s) to compare models before and after conversion to Intermediate Representations
 were...
 
-                                pre-conversion  |   post-conversion
+                                 pre-conversion  |   post-conversion
 `Accuracy                    |       NA          |       NA`  
 `Model Size                  |     69.7mb        |     33mb`  
 `FPS                         |      4.06         |      5.26`  
