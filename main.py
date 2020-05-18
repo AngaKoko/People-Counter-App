@@ -91,11 +91,11 @@ def performance_counts(perf_count):
     :param perf_count: Dictionary consists of status of the layers.
     :return: None
     """
-    print("{:<70} {:<15} {:<15} {:<15} {:<10}".format('name', 'layer_type',
+    log.info("{:<70} {:<15} {:<15} {:<15} {:<10}".format('name', 'layer_type',
                                                       'exec_type', 'status',
                                                       'real_time, us'))
     for layer, stats in perf_count.items():
-        print("{:<70} {:<15} {:<15} {:<15} {:<10}".format(layer,
+        log.info("{:<70} {:<15} {:<15} {:<15} {:<10}".format(layer,
                                                           stats['layer_type'],
                                                           stats['exec_type'],
                                                           stats['status'],
@@ -187,6 +187,7 @@ def infer_on_stream(args, client):
     cap.open(args.input)
     _, frame = cap.read()
 
+    cur_request_id = 0
     people_total_count = 0
     people_in_a_frame = 0
 
@@ -213,11 +214,15 @@ def infer_on_stream(args, client):
         image = np.moveaxis(image_resize, -1, 0)
 
         # Perform inference on the frame
-        infer_network.exec_net(image, request_id=0)
+        infer_network.exec_net(image, cur_request_id)
         
         # Get the output of inference
-        if infer_network.wait(request_id=0) == 0:
-            result = infer_network.get_output(request_id=0)
+        if infer_network.wait(cur_request_id) == 0:
+            result = infer_network.get_output(cur_request_id)
+            if args.perf_counts:
+                perf_count = infer_network.performance_counter(cur_request_id)
+                performance_counts(perf_count)
+                
             for box in result[0][0]: # Output shape is 1x1x100x7
                 conf = box[2]
                 if conf >= prob_threshold:
