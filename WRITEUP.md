@@ -29,13 +29,13 @@ My method(s) to compare models before and after conversion to Intermediate Repre
 were...
 
                                 pre-conversion  |   post-conversion
-`Accuracy                    |       NA          |       NA`
-`Model Size                  |     69.7mb        |     33mb`
-`FPS                         |      4.06         |      5.26`
-`Latency (ms)                |     235.28        |     186.17`
-`Total Excution time (ms)    |    20457.53       |    20329.06`
-`Batch                       |       1           |       1`
-`Streams                     |       1           |       1`
+`Accuracy                    |       NA          |       NA`  
+`Model Size                  |     69.7mb        |     33mb`  
+`FPS                         |      4.06         |      5.26`  
+`Latency (ms)                |     235.28        |     186.17`  
+`Total Excution time (ms)    |    20457.53       |    20329.06`  
+`Batch                       |       1           |       1`  
+`Streams                     |       1           |       1`  
 
 ## Assess Model Use Cases
 
