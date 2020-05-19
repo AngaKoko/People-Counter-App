@@ -1,12 +1,5 @@
 # Project Write-Up
 
-The people counter application will demonstrate how to create a smart video IoT solution using Intel® hardware and software tools. The app will detect people in a designated area, providing the number of people in the frame, average duration of people in frame, and total count.
-
-ssd_mobilenet_v2_coco_2018_03_29 TensorFlow model was used for the project and the model can be downloaded from this link http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz
-
-Model was coverted to IR using this command:  
-`python3 /opt/intel/openvino/deployment_tools/model_optimizer/mo_tf.py --input_model frozen_inference_graph.pb --tensorflow_object_detection_api_pipeline_config pipeline.config --reverse_input_channels --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_support.json`
-
 ## Explaining Custom Layers
 
 Custom layers are layers not in the list of known layers in the Intel® Distribution of OpenVINO™ toolkit. The Inference Engine will consider these layers as unsupported and  report an error when these layers are loaded into a device plugin from the input model IR files. An extension for both Model Optimizer and Inference Engine is needed when implementing custom layers for a pre-trained model in the Intel® Distribution of OpenVINO™ toolkit. 

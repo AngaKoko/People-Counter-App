@@ -33,7 +33,6 @@ from argparse import ArgumentParser
 from inference import Network
 
 from fysom import *
-from imutils.video import FPS
 
 # MQTT server environment variables
 HOSTNAME = socket.gethostname()
@@ -155,8 +154,6 @@ def infer_on_stream(args, client):
     total_count = 0
     duration = 0
 
-    fps = FPS().start()
-
     #  Loop until stream is over ###
     while cap.isOpened():
         #  Read from the video capture ###
@@ -248,15 +245,12 @@ def infer_on_stream(args, client):
                 #Break if escape key pressed
                 if key_pressed == 27:
                     break
-        
-        fps.update()
     
     # Release the out writer, capture, and destroy any OpenCV windows
     cap.release()
     cv2.destroyAllWindows()
     client.disconnect()
     infer_network.flush()
-    fps.stop()
 
 def main():
     """
